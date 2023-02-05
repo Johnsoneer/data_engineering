@@ -6,7 +6,19 @@ model.load_from_file()
 
 
 def process_stdin(stream):
-    < PUT YOUR CODE HERE>
+    '''
+    Given an input stream from our command line, read the filenames as strings.
+
+    External source used to help:
+        -https://www.geeksforgeeks.org/take-input-from-stdin-in-python/
+
+    '''
+
+    # read lines
+    fnames = stream.readlines()
+
+    # couldn't find a more elegant way to get rid of that extra \n
+    return [x.replace("\n","") for x in fnames]
 
 def score_one_file(fname, model):
     try:
