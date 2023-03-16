@@ -1,0 +1,4 @@
+id,is_active,
+spring2021,TRUE,"INSERT INTO term (id,is_active) VALUES (""spring2021"",""TRUE"");"
+summer2021,TRUE,"INSERT INTO term (id,is_active) VALUES (""summer2021"",""TRUE"");"
+fall2021,TRUE,"INSERT INTO term (id,is_active) VALUES (""fall2021"",""TRUE"");"
