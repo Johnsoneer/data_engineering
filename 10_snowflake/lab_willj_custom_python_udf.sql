@@ -2,34 +2,9 @@ USE ROLE ACCOUNTADMIN;
 USE DATABASE DS5559_DATA;
 USE SCHEMA PUBLIC;
 
--- Show warehouses available, just an example of a sql command that is snowflake specific... this
--- shoud show you the warehouses available, to start it is only the default, COMPUTE_WH
-SHOW WAREHOUSES;
 
--- Another snowflake specific command. Note how much metadata is related to the table
--- The 'information_schema' contains info about all the tables available
-SELECT * FROM information_schema.columns;
-
--- This should narrow it down to the PUBLIC schema
-SELECT * FROM information_schema.columns WHERE "TABLE_SCHEMA" = 'PUBLIC';
-
--- To get just the columns from our table you have to get really specific....
-SELECT "COLUMN_NAME"
-FROM information_schema.columns
-WHERE "TABLE_SCHEMA" = 'PUBLIC'
-    AND "TABLE_NAME" = 'IRIS_DATA';
-
--- This version will FAIL... because of the specific syntax, which varies from say pyspark and snowflake...
--- Note that IRIS_DATA has double quotes... you'll see the error message "...Invalid Identifier IRIS_DATA"
-SELECT "COLUMN_NAME"
-FROM information_schema.columns
-WHERE "TABLE_SCHEMA" = 'PUBLIC'
-    AND "TABLE_NAME" = "IRIS_DATA";
-
-
---  AND NOW FOR A SHORT PROCEDURE
--- Show the procedures available under this schema, initially should only contain two defaults unrelated to user
-SHOW PROCEDURES;
+-- this will show us the version for the 3rd party packages our python script leverages:
+select * from information_schema.packages where (package_name = 'pandas' and language = 'python');
 
 
 -- THIS is the procedure, note the first part is straight SQL followed by javascript encircled by $$
@@ -47,6 +22,7 @@ SHOW PROCEDURES;
 CREATE OR REPLACE PROCEDURE udf1()
     RETURNS string
     LANGUAGE PYTHON
+    PACKAGES = ('snowflake-snowpark-python','pandas')
     COMMENT = 'python udf'
     HANDLER = 'udf1'
     RUNTIME_VERSION = '3.8'
@@ -54,10 +30,13 @@ CREATE OR REPLACE PROCEDURE udf1()
 AS
 $$
 import json
+import pandas as pd
+
+
 def udf1(sess):
   validations = [{
       'name':'_AUDIT_DBT_TESTS_--DbtTestsPassed'
-      ,'sql_statement':"SELECT count(*) as FLOWER_COUNT FROM IRIS_DATA;"
+      ,'sql_statement':"SELECT count(*) as FLOWER_COUNT FROM IRIS_DATA"
   }]
 
   # our JSON dictionary
@@ -84,7 +63,7 @@ def udf1(sess):
       try:
           res = sess.sql(query)
           row_count = res.count()
-          return_results["output_data"] = res.to_json()
+          return_results['output_data'] = str(res.collect())
           
           if row_count == 0:
               return_results["pass_names"].append(validation["name"])
@@ -119,3 +98,25 @@ CALL udf1();
 -- This should get you the text, run this and click on the last rows value for 'body'
 DESCRIBE PROCEDURE udf1();
 
+
+
+
+-- The above should return the following output
+-- {
+--     "validation_failures": 1,
+--     "fail_num": 1,
+--     "pass_num": 0,
+--     "exce_num": 0,
+--     "total_num": 1,
+--     "fail_queries": [
+--         "SELECT count(*) as FLOWER_COUNT FROM IRIS_DATA"
+--     ],
+--     "exce_queries": [],
+--     "pass_names": [],
+--     "fail_names": [
+--         "_AUDIT_DBT_TESTS_--DbtTestsPassed"
+--     ],
+--     "exce_names": [],
+--     "exce_err_messages": [],
+--     "output_data": "[Row(FLOWER_COUNT=150)]"
+-- }
